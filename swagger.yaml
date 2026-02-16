@@ -1,0 +1,262 @@
+openapi: 3.0.3
+info:
+  title: Email Validator API
+  description: |
+    High-performance email validation API with comprehensive checks including syntax validation, 
+    MX record verification, disposable email detection, and reputation scoring.
+    
+    ## Authentication
+    Include your API key in the request header: `X-API-Key: your-api-key`
+    
+    ## Rate Limiting
+    - Free tier: 100 requests/day
+    - Premium tier: 10,000 requests/day
+    
+    ## Pricing
+    - $0.05 per API call
+    - Free tier available with limited usage
+  version: 1.0.0
+  contact:
+    name: Email Validator API
+    url: https://github.com/atlas/email-validator-api
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://email-validator-api-production.up.railway.app
+    description: Production server
+  - url: http://localhost:3000
+    description: Development server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /validate:
+    post:
+      summary: Validate email address
+      description: |
+        Validates an email address using multiple checks:
+        - Syntax validation (RFC 5322 compliant)
+        - MX record verification
+        - Disposable email detection
+        - Reputation scoring
+      tags:
+        - Email Validation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Email address to validate
+                  example: user@example.com
+      responses:
+        '200':
+          description: Email validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the email is valid
+                    example: true
+                  reason:
+                    type: string
+                    description: Reason for validation result
+                    example: "Valid email address"
+                  confidence:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 1
+                    description: Confidence score (0.0 to 1.0)
+                    example: 0.95
+                  checks:
+                    type: object
+                    properties:
+                      syntax:
+                        type: boolean
+                        description: Syntax validation result
+                        example: true
+                      mx:
+                        type: boolean
+                        description: MX record exists
+                        example: true
+                      disposable:
+                        type: boolean
+                        description: Is disposable email
+                        example: false
+                      reputation:
+                        type: number
+                        format: float
+                        description: Reputation score
+                        example: 0.95
+              examples:
+                valid_email:
+                  summary: Valid email
+                  value:
+                    valid: true
+                    reason: "Valid email address"
+                    confidence: 0.95
+                    checks:
+                      syntax: true
+                      mx: true
+                      disposable: false
+                      reputation: 0.95
+                invalid_syntax:
+                  summary: Invalid syntax
+                  value:
+                    valid: false
+                    reason: "Invalid email syntax"
+                    confidence: 0.0
+                    checks:
+                      syntax: false
+                      mx: null
+                      disposable: null
+                      reputation: 0.0
+                disposable_email:
+                  summary: Disposable email
+                  value:
+                    valid: false
+                    reason: "Disposable email address"
+                    confidence: 0.3
+                    checks:
+                      syntax: true
+                      mx: true
+                      disposable: true
+                      reputation: 0.3
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Email address is required"
+                code: "MISSING_EMAIL"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid API key"
+                code: "INVALID_API_KEY"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Daily limit exceeded"
+                code: "DAILY_LIMIT_EXCEEDED"
+                limit: 100
+                usage: 100
+
+  /health:
+    get:
+      summary: Health check
+      description: Check API health status
+      tags:
+        - System
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-01T12:00:00.000Z"
+                  version:
+                    type: string
+                    example: "1.0.0"
+
+  /usage:
+    get:
+      summary: Get API usage statistics
+      description: Get current API usage statistics for your API key
+      tags:
+        - Account
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKey:
+                    type: string
+                    description: Masked API key
+                    example: "demo-key..."
+                  tier:
+                    type: string
+                    description: Account tier
+                    example: "free"
+                  dailyLimit:
+                    type: integer
+                    description: Daily request limit
+                    example: 100
+                  dailyUsage:
+                    type: integer
+                    description: Requests used today
+                    example: 25
+                  remaining:
+                    type: integer
+                    description: Remaining requests today
+                    example: 75
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for authentication. Get your API key by signing up at RapidAPI.
+        
+        Demo keys for testing:
+        - demo-key-123 (Free tier: 100 requests/day)
+        - premium-key-456 (Premium tier: 10,000 requests/day)
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+      required:
+        - error
+        - code
+
+tags:
+  - name: Email Validation
+    description: Core email validation functionality
+  - name: Account
+    description: Account and usage management
+  - name: System
+    description: System health and status
